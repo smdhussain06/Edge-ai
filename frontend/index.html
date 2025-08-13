@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Offline AI Chat (Ollama + Flask)</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <div class="left">
+      <h1>Offline AI Chat</h1>
+      <span id="status" class="badge">Checking...</span>
+    </div>
+    <div class="right">
+      <label for="modelSelect">Model</label>
+      <select id="modelSelect"></select>
+      <button id="refreshModels" title="Refresh models">↻</button>
+      <label class="switch">
+        <input type="checkbox" id="darkToggle" />
+        <span class="slider"></span>
+      </label>
+    </div>
+  </header>
+
+  <main>
+    <div id="chat"></div>
+  </main>
+
+  <footer>
+    <textarea id="prompt" rows="2" placeholder="Type your message... (Enter to send, Shift+Enter for newline)"></textarea>
+    <div class="actions">
+      <button id="send">Send</button>
+      <button id="save">Save chat</button>
+      <button id="load">Load chat</button>
+      <button id="clear">Clear</button>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
