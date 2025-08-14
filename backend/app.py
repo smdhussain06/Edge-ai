@@ -1,10 +1,6 @@
 import os
-import re
-import json
-import shutil
 import logging
 from datetime import datetime
-from pathlib import Path
 from flask import Flask, jsonify, request, send_from_directory
 import requests
 
@@ -12,7 +8,6 @@ import requests
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FRONTEND_DIR = os.path.join(BASE_DIR, 'frontend')
 LOG_FILE = os.path.join(BASE_DIR, 'logs.txt')
-DEFAULT_SAVE_DIR = os.environ.get('SAVE_DIR') or os.path.join(BASE_DIR, 'saves')
 
 # Logging
 logging.basicConfig(
@@ -29,29 +24,12 @@ OLLAMA_HOST = os.environ.get('OLLAMA_HOST', '127.0.0.1')
 OLLAMA_PORT = int(os.environ.get('OLLAMA_PORT', '11434'))
 OLLAMA_URL = f"http://{OLLAMA_HOST}:{OLLAMA_PORT}"
 
-def _ensure_dir(path: str) -> str:
-    try:
-        Path(path).mkdir(parents=True, exist_ok=True)
-        return str(Path(path).resolve())
-    except Exception:
-        return path
-
-
-def _safe_filename(name: str) -> str:
-    name = name.strip() or 'chat'
-    name = re.sub(r'[^a-zA-Z0-9._-]+', '_', name)
-    return name[:120]
-
-
 def create_app():
     app = Flask(
         __name__,
         static_folder=FRONTEND_DIR,
         static_url_path=''
     )
-
-    # In-memory setting for save directory (persisted by environment or default)
-    app.config['SAVE_DIR'] = _ensure_dir(DEFAULT_SAVE_DIR)
 
     # ---------- Static frontend ----------
     @app.route('/')
@@ -176,81 +154,6 @@ def create_app():
         except Exception as e:
             logger.exception("/api/chat unexpected error")
             return jsonify({'error': 'Failed to contact Ollama', 'details': str(e)}), 502
-
-    # ---------- Storage management endpoints ----------
-    @app.get('/api/storage')
-    def get_storage_info():
-        save_dir = app.config.get('SAVE_DIR')
-        try:
-            entries = []
-            p = Path(save_dir)
-            if p.exists():
-                for f in p.glob('*.json'):
-                    entries.append({
-                        'name': f.name,
-                        'size': f.stat().st_size,
-                        'modified': datetime.utcfromtimestamp(f.stat().st_mtime).isoformat() + 'Z'
-                    })
-            return jsonify({'save_dir': save_dir, 'files': sorted(entries, key=lambda x: x['modified'], reverse=True)})
-        except Exception as e:
-            return jsonify({'save_dir': save_dir, 'files': [], 'error': str(e)}), 200
-
-    @app.post('/api/storage/dir')
-    def set_storage_dir():
-        data = request.get_json(silent=True) or {}
-        new_dir = data.get('path')
-        if not new_dir:
-            return jsonify({'error': 'path is required'}), 400
-        # Limit to safe locations: within project or under home directory
-        try:
-            new_path = Path(new_dir).expanduser()
-            # Create and resolve
-            new_abs = _ensure_dir(str(new_path))
-            app.config['SAVE_DIR'] = new_abs
-            return jsonify({'save_dir': new_abs})
-        except Exception as e:
-            return jsonify({'error': str(e)}), 400
-
-    @app.post('/api/storage/save')
-    def save_chat_file():
-        data = request.get_json(silent=True) or {}
-        name = _safe_filename(data.get('name') or datetime.utcnow().strftime('%Y%m%d_%H%M%S'))
-        content = data.get('content')
-        if content is None:
-            return jsonify({'error': 'content is required'}), 400
-        save_dir = Path(app.config.get('SAVE_DIR'))
-        try:
-            save_dir.mkdir(parents=True, exist_ok=True)
-            path = save_dir / f"{name}.json"
-            with path.open('w', encoding='utf-8') as f:
-                json.dump(content, f, ensure_ascii=False, indent=2)
-            return jsonify({'saved': True, 'file': str(path)})
-        except Exception as e:
-            logger.error(f"save_chat_file error: {e}")
-            return jsonify({'error': 'failed to save', 'details': str(e)}), 500
-
-    @app.post('/api/storage/read')
-    def read_chat_file():
-        data = request.get_json(silent=True) or {}
-        name = data.get('name')
-        if not name:
-            return jsonify({'error': 'name is required'}), 400
-        # Prevent path traversal: only allow filenames within SAVE_DIR and .json extension
-        base_name = os.path.basename(name)
-        if not base_name.endswith('.json'):
-            return jsonify({'error': 'invalid file name'}), 400
-        save_dir = Path(app.config.get('SAVE_DIR')).resolve()
-        path = (save_dir / base_name).resolve()
-        try:
-            path.relative_to(save_dir)
-        except Exception:
-            return jsonify({'error': 'access denied'}), 403
-        try:
-            with path.open('r', encoding='utf-8') as f:
-                content = json.load(f)
-            return jsonify({'ok': True, 'content': content})
-        except Exception as e:
-            return jsonify({'error': 'failed to read', 'details': str(e)}), 404
 
     return app
 

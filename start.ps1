@@ -66,10 +66,6 @@ $env:FLASK_HOST = '127.0.0.1'
 $env:FLASK_PORT = '5000'
 $env:OLLAMA_HOST = '127.0.0.1'
 $env:OLLAMA_PORT = '11434'
-if (-not $env:SAVE_DIR -or $env:SAVE_DIR -eq '') {
-    $env:SAVE_DIR = Join-Path $PSScriptRoot 'saves'
-}
 
-Write-Info "Saving chats to: $($env:SAVE_DIR)"
 Write-Info "Starting Flask on http://$($env:FLASK_HOST):$($env:FLASK_PORT)"
 python -m flask --app backend.app run --host $env:FLASK_HOST --port $env:FLASK_PORT

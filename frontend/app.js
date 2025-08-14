@@ -11,15 +11,6 @@ const modelSelect = $('#modelSelect');
 const refreshModelsBtn = $('#refreshModels');
 const statusEl = $('#status');
 const darkToggle = $('#darkToggle');
-const storageBtn = $('#storageBtn');
-const storagePanel = $('#storagePanel');
-const closeStorage = $('#closeStorage');
-const currentDirEl = $('#currentDir');
-const newDirEl = $('#newDir');
-const changeDirBtn = $('#changeDirBtn');
-const filenameEl = $('#filename');
-const saveFileBtn = $('#saveFileBtn');
-const fileListEl = $('#fileList');
 
 const STORAGE_KEY = 'offline_chat_history_v1';
 const THEME_KEY = 'offline_chat_theme';
@@ -129,94 +120,6 @@ function setTheme(theme) {
   darkToggle.checked = theme !== 'light';
 }
 
-// ---------- Storage helpers ----------
-async function fetchStorageInfo() {
-  const r = await fetch('/api/storage');
-  if (!r.ok) throw new Error('Failed to load storage info');
-  return r.json();
-}
-
-async function setStorageDir(path) {
-  const r = await fetch('/api/storage/dir', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ path })
-  });
-  const data = await r.json();
-  if (!r.ok) throw new Error(data?.error || 'Failed to set dir');
-  return data;
-}
-
-async function saveChatToFile(name, content) {
-  const r = await fetch('/api/storage/save', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, content })
-  });
-  const data = await r.json();
-  if (!r.ok) throw new Error(data?.error || 'Failed to save file');
-  return data;
-}
-
-async function readChatFile(name) {
-  const r = await fetch('/api/storage/read', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name })
-  });
-  const data = await r.json();
-  if (!r.ok) throw new Error(data?.error || 'Failed to read file');
-  return data?.content;
-}
-
-function openStoragePanel() {
-  storagePanel.setAttribute('aria-hidden', 'false');
-  loadStoragePanel();
-}
-function closeStoragePanel() {
-  storagePanel.setAttribute('aria-hidden', 'true');
-}
-
-async function loadStoragePanel() {
-  try {
-    const info = await fetchStorageInfo();
-    currentDirEl.textContent = info.save_dir || '';
-    fileListEl.innerHTML = '';
-    (info.files || []).forEach(f => {
-      const li = document.createElement('li');
-      const name = f.name;
-      li.innerHTML = `
-        <button class="open" title="Open">Open</button>
-        <span class="file-name">${escapeHtml(name)}</span>
-        <span class="meta">${Math.round((f.size||0)/1024)} KB • ${new Date(f.modified).toLocaleString()}</span>
-      `;
-      li.querySelector('.open').addEventListener('click', async () => {
-        try {
-          const content = await readChatFile(name);
-          if (Array.isArray(content)) {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(content));
-            renderHistory();
-          }
-        } catch (e) {
-          alert(e.message || e);
-        }
-      });
-      fileListEl.appendChild(li);
-    });
-  } catch (e) {
-    currentDirEl.textContent = 'Error loading storage info';
-  }
-}
-
-// Save current chat history to file
-async function handleSaveFile() {
-  try {
-    const name = (filenameEl.value || '').trim();
-    const msgs = getHistory();
-    await saveChatToFile(name, msgs);
-    filenameEl.value = '';
-    await loadStoragePanel();
-    alert('Saved');
-  } catch (e) { alert(e.message || e); }
-}
-
 async function sendPrompt() {
   const text = promptEl.value.trim();
   if (!text) return;
@@ -257,15 +160,6 @@ clearBtn.addEventListener('click', () => { chatEl.innerHTML = ''; saveHistory();
 refreshModelsBtn.addEventListener('click', () => { loadModels(); healthCheck(); });
 modelSelect.addEventListener('change', () => localStorage.setItem(MODEL_KEY, modelSelect.value));
 darkToggle.addEventListener('change', () => setTheme(darkToggle.checked ? 'dark' : 'light'));
-storageBtn.addEventListener('click', openStoragePanel);
-closeStorage.addEventListener('click', closeStoragePanel);
-changeDirBtn.addEventListener('click', async () => {
-  const p = newDirEl.value.trim();
-  if (!p) return;
-  try { await setStorageDir(p); newDirEl.value=''; await loadStoragePanel(); }
-  catch (e) { alert(e.message || e); }
-});
-saveFileBtn.addEventListener('click', handleSaveFile);
 
 // Init
 (function init() {
