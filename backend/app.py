@@ -235,8 +235,16 @@ def create_app():
         name = data.get('name')
         if not name:
             return jsonify({'error': 'name is required'}), 400
-        save_dir = Path(app.config.get('SAVE_DIR'))
-        path = save_dir / name
+        # Prevent path traversal: only allow filenames within SAVE_DIR and .json extension
+        base_name = os.path.basename(name)
+        if not base_name.endswith('.json'):
+            return jsonify({'error': 'invalid file name'}), 400
+        save_dir = Path(app.config.get('SAVE_DIR')).resolve()
+        path = (save_dir / base_name).resolve()
+        try:
+            path.relative_to(save_dir)
+        except Exception:
+            return jsonify({'error': 'access denied'}), 403
         try:
             with path.open('r', encoding='utf-8') as f:
                 content = json.load(f)
