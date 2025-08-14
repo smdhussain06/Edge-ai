@@ -16,6 +16,7 @@
       <label for="modelSelect">Model</label>
       <select id="modelSelect"></select>
       <button id="refreshModels" title="Refresh models">↻</button>
+      <button id="storageBtn" title="Manage storage">Storage</button>
       <label class="switch">
         <input type="checkbox" id="darkToggle" />
         <span class="slider"></span>
@@ -36,6 +37,40 @@
       <button id="clear">Clear</button>
     </div>
   </footer>
+
+  <!-- Storage side panel -->
+  <aside id="storagePanel" aria-hidden="true">
+    <div class="sp-header">
+      <h2>Storage</h2>
+      <button id="closeStorage" title="Close">✕</button>
+    </div>
+    <div class="sp-body">
+      <section>
+        <h3>Save directory</h3>
+        <div class="row">
+          <div class="label">Current</div>
+          <div id="currentDir" class="value">...</div>
+        </div>
+        <div class="row">
+          <input id="newDir" type="text" placeholder="Set a new folder path" />
+          <button id="changeDirBtn">Change</button>
+        </div>
+      </section>
+
+      <section>
+        <h3>Save chat to file</h3>
+        <div class="row">
+          <input id="filename" type="text" placeholder="Filename (no extension)" />
+          <button id="saveFileBtn">Save</button>
+        </div>
+      </section>
+
+      <section>
+        <h3>Saved files</h3>
+        <ul id="fileList" class="file-list"></ul>
+      </section>
+    </div>
+  </aside>
 
   <script src="app.js"></script>
 </body>
